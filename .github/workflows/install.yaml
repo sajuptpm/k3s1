@@ -81,7 +81,7 @@ jobs:
         dtest: [selinux]
     steps:
       - name: "Checkout"
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with: {fetch-depth: 1}
 
       - name: Resolve Execution Mode
@@ -150,7 +150,7 @@ jobs:
           df -khl
 
       - name: "Checkout"
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with: {fetch-depth: 1}
 
       - name: Resolve Execution Mode
@@ -176,7 +176,7 @@ jobs:
 
       - name: "Vagrant Cache"
         if: inputs.dry_run != true
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: |
              ~/.vagrant.d/boxes
@@ -188,7 +188,7 @@ jobs:
         run: vagrant plugin install vagrant-k3s vagrant-reload vagrant-scp
 
       - name: "Download k3s binary"
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: k3s-amd64
           path: tests/install/${{ matrix.vm }}

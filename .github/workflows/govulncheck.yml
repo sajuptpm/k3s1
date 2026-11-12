@@ -41,7 +41,7 @@ jobs:
     runs-on: ${{ inputs.runner || vars.RUNNER_LABEL || 'ubuntu-24.04' }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Resolve Execution Mode
         id: mode
@@ -106,7 +106,7 @@ jobs:
 
       - name: Upload Vulnerability Report
         if: steps.mode.outputs.resolved_mode == 'native' && always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: govulncheck-report
           path: vuln-reports/

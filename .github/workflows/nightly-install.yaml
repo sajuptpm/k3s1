@@ -112,7 +112,7 @@ jobs:
           df -khl
 
       - name: "Checkout"
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with: {fetch-depth: 1}
 
       - name: Resolve Execution Mode
@@ -139,7 +139,7 @@ jobs:
 
       - name: "Vagrant Cache"
         if: inputs.dry_run != true
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: |
              ~/.vagrant.d/boxes
@@ -201,11 +201,11 @@ jobs:
         suite: ${{ (inputs.suite == 'serial' && fromJSON('["serial"]')) || (inputs.suite == 'parallel' && fromJSON('["parallel"]')) || fromJSON('["serial", "parallel"]') }}
     steps:
       - name: "Checkout"
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with: {fetch-depth: 1}
 
       - name: "Download K3s image"
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: k3s-amd64
           path: ./dist/artifacts

@@ -89,7 +89,7 @@ jobs:
           echo "- Dry Run: \`${{ inputs.dry_run || false }}\`" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           fetch-depth: 1
 
@@ -127,7 +127,7 @@ jobs:
           fi
 
       - name: Upload Coverage Artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: unit-coverage-linux
           path: coverage.out
@@ -138,7 +138,7 @@ jobs:
         env:
           HAS_CODECOV: ${{ secrets.CODECOV_TOKEN != '' }}
         if: steps.mode.outputs.resolved_mode == 'original' || env.HAS_CODECOV == 'true'
-        uses: codecov/codecov-action@v5
+        uses: codecov/codecov-action@v7
         continue-on-error: true
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
@@ -153,7 +153,7 @@ jobs:
     timeout-minutes: 20
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           fetch-depth: 1
 
@@ -174,7 +174,7 @@ jobs:
           go tool cover -func coverage.out
 
       - name: Upload Coverage Artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: unit-coverage-windows
           path: coverage.out
@@ -185,7 +185,7 @@ jobs:
         env:
           HAS_CODECOV: ${{ secrets.CODECOV_TOKEN != '' }}
         if: env.HAS_CODECOV == 'true'
-        uses: codecov/codecov-action@v5
+        uses: codecov/codecov-action@v7
         continue-on-error: true
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
@@ -199,7 +199,7 @@ jobs:
     runs-on: ${{ inputs.runner || vars.RUNNER_LABEL || 'ubuntu-24.04' }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Build and Run test-mods
         shell: bash
