@@ -107,11 +107,11 @@ jobs:
           echo "- Dry Run: \`${{ inputs.dry_run || false }}\`" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Set up Docker (Original Mode)
         if: steps.mode.outputs.resolved_mode == 'original'
-        uses: docker/setup-docker-action@77e84dbf09b47d1e29270283c22f16145aa85ca1 # v5.4.0
+        uses: docker/setup-docker-action@3f1ab1ab0e29231562e4db4ca600c1a49653bac6 # v5.7.0
         with:
           version: type=image,tag=29
           daemon-config: '{"features":{"containerd-snapshotter":true}}'
@@ -136,7 +136,7 @@ jobs:
           docker info
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@v4
 
       - name: Read registry secrets (staging)
         uses: rancher-eio/read-vault-secrets@0da85151ad1f19ed7986c41587e45aac1ace74b6 # v3
@@ -166,7 +166,7 @@ jobs:
 
       - name: Login to DockerHub with Rancher Secrets
         if: steps.mode.outputs.resolved_mode == 'original' && github.repository == 'k3s-io/k3s' && env.DOCKER_USERNAME != ''
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           username: ${{ env.DOCKER_USERNAME }}
           password: ${{ env.DOCKER_TOKEN }}
@@ -176,14 +176,14 @@ jobs:
         if: steps.mode.outputs.resolved_mode == 'native' && env.DOCKER_HAS_SECRET == 'true'
         env:
           DOCKER_HAS_SECRET: ${{ secrets.DOCKER_USERNAME != '' && secrets.DOCKER_TOKEN != '' }}
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_TOKEN }}
 
       - name: Login to Staging Registry
         if: steps.mode.outputs.resolved_mode == 'original' && github.repository == 'k3s-io/k3s' && env.STAGING_REGISTRY != ''
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ${{ env.STAGING_REGISTRY }}
           username: ${{ env.STAGING_REGISTRY_USERNAME }}
@@ -191,14 +191,14 @@ jobs:
 
       - name: Login to Prime Registry
         if: steps.mode.outputs.resolved_mode == 'original' && !contains(env.RESOLVED_TAG, '-rc') && github.repository == 'k3s-io/k3s' && env.REGISTRY != ''
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ env.REGISTRY_USERNAME }}
           password: ${{ env.REGISTRY_PASSWORD }}
 
       - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ghcr.io
           username: ${{ github.repository_owner }}
@@ -235,7 +235,7 @@ jobs:
 
       - name: Extract Docker metadata
         id: meta
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@v6
         with:
           images: |
             ghcr.io/${{ github.repository }}
@@ -246,7 +246,7 @@ jobs:
           tags: ${{ steps.tag_config.outputs.tag_spec }}
 
       - name: "Download K3s build"
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           pattern: k3s*
           path: ./dist/artifacts
@@ -262,7 +262,7 @@ jobs:
 
       - name: Build and push K3s runtime image
         if: inputs.dry_run != true
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: ./package/Dockerfile
@@ -315,7 +315,7 @@ jobs:
           echo "- Dry Run: \`${{ inputs.dry_run || false }}\`" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Read Prime artifacts secrets
         uses: rancher-eio/read-vault-secrets@0da85151ad1f19ed7986c41587e45aac1ace74b6 # v3
@@ -341,7 +341,7 @@ jobs:
             secret/data/github/repo/${{ github.repository }}/k3s-suse-registry/credentials registry | REGISTRY
 
       - name: Configure AWS Credentials (s3)
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@v6
         if: steps.mode.outputs.resolved_mode == 'original' && github.repository == 'k3s-io/k3s' && env.AWS_ACCESS_KEY_ID != ''
         with:
           aws-access-key-id: ${{ env.AWS_ACCESS_KEY_ID }}
@@ -349,7 +349,7 @@ jobs:
           aws-region: us-east-1
 
       - name: "Download Artifacts"
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           pattern: "*"
           path: ./dist/artifacts
@@ -402,7 +402,7 @@ jobs:
           fi
 
       - name: Upload Release Assets Bundle
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: release-assets-${{ env.RESOLVED_TAG }}
           path: |

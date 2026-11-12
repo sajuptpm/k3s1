@@ -140,7 +140,7 @@ jobs:
           df -khl
 
       - name: "Checkout"
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with: {fetch-depth: 1}
 
       - name: Resolve Execution Mode
@@ -165,7 +165,7 @@ jobs:
 
       - name: Set up Docker (Original Mode)
         if: steps.mode.outputs.resolved_mode == 'original' && inputs.dry_run != true
-        uses: docker/setup-docker-action@77e84dbf09b47d1e29270283c22f16145aa85ca1 # v5.4.0
+        uses: docker/setup-docker-action@3f1ab1ab0e29231562e4db4ca600c1a49653bac6 # v5.7.0
         with:
           version: type=image,tag=29
           daemon-config: '{"features":{"containerd-snapshotter":true}}'
@@ -193,7 +193,7 @@ jobs:
 
       - name: Vagrant Box R/W Cache
         if: matrix.etest != 'btrfs' && github.ref == 'refs/heads/main' && inputs.dry_run != true
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: |
              ~/.vagrant.d/boxes
@@ -201,14 +201,14 @@ jobs:
 
       - name: Vagrant Box Read Cache
         if: matrix.etest != 'btrfs' && github.ref != 'refs/heads/main' && inputs.dry_run != true
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@v6
         with:
           path: |
              ~/.vagrant.d/boxes
           key: ${{ matrix.etest != 'btrfs' && 'vagrant-box-ubuntu-2404' || 'vagrant-box-leap' }}
 
       - name: Vagrant Plugins R/W Cache
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         if: github.ref == 'refs/heads/main' && inputs.dry_run != true
         with:
           path: |
@@ -217,7 +217,7 @@ jobs:
           key: vagrant-plugins
 
       - name: Vagrant Plugins Read Cache
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@v6
         if: github.ref != 'refs/heads/main' && inputs.dry_run != true
         with:
           path: |
@@ -236,7 +236,7 @@ jobs:
           done
 
       - name: "Download k3s binary"
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: k3s-amd64
           path: ./dist/artifacts
@@ -268,7 +268,7 @@ jobs:
           fi
 
       - name: On Failure, Upload Journald Logs
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         if: ${{ failure() }}
         with:
           name: e2e-${{ matrix.etest }}-logs
@@ -279,7 +279,7 @@ jobs:
         if: env.CODECOV_TOKEN != ''
         env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
-        uses: codecov/codecov-action@v5
+        uses: codecov/codecov-action@v7
         continue-on-error: true
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
@@ -289,7 +289,7 @@ jobs:
 
       - name: Archive Coverage Results (Native Alternative)
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: e2e-${{ matrix.etest }}-coverage
           path: tests/e2e/${{ matrix.etest }}/coverage.out
@@ -309,13 +309,13 @@ jobs:
     runs-on: ${{ inputs.runner || vars.RUNNER_LABEL || 'ubuntu-24.04' }}
     steps:
     - name: Checkout
-      uses: actions/checkout@v4
+      uses: actions/checkout@v7
 
     - name: Install Go
       uses: ./.github/actions/setup-go
 
     - name: "Download K3s image"
-      uses: actions/download-artifact@v4
+      uses: actions/download-artifact@v8
       with:
         name: k3s-${{ matrix.arch }}
         path: ./dist/artifacts

@@ -52,7 +52,7 @@ jobs:
     
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v4
+      uses: actions/checkout@v7
 
     - name: Resolve Execution Mode
       id: mode
@@ -73,21 +73,21 @@ jobs:
 
     # Initializes the CodeQL tools for scanning.
     - name: Initialize CodeQL
-      uses: github/codeql-action/init@b96794f015dfd88f77b49b1c93e0fa7110f94c63 # v4
+      uses: github/codeql-action/init@33d7b85da1a04171e211befe2c739303b9a4c066 # v4
       with:
         languages: ${{ matrix.language }}
         build-mode: ${{ matrix.build-mode }}
 
     - name: Perform CodeQL Analysis (Original Mode)
       if: steps.mode.outputs.resolved_mode == 'original'
-      uses: github/codeql-action/analyze@b96794f015dfd88f77b49b1c93e0fa7110f94c63 # v4
+      uses: github/codeql-action/analyze@33d7b85da1a04171e211befe2c739303b9a4c066 # v4
       with:
         category: "/language:${{matrix.language}}"
 
     - name: Perform CodeQL Analysis (Native Alternative)
       if: steps.mode.outputs.resolved_mode == 'native'
       id: analyze_native
-      uses: github/codeql-action/analyze@b96794f015dfd88f77b49b1c93e0fa7110f94c63 # v4
+      uses: github/codeql-action/analyze@33d7b85da1a04171e211befe2c739303b9a4c066 # v4
       continue-on-error: true
       with:
         category: "/language:${{matrix.language}}"
@@ -111,7 +111,7 @@ jobs:
 
     - name: Upload SARIF Artifact
       if: steps.mode.outputs.resolved_mode == 'native' && always()
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
         name: codeql-${{ matrix.language }}-sarif
         path: sarif-artifacts/

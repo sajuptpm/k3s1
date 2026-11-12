@@ -64,7 +64,7 @@ jobs:
       - name: Check issue size and type (Native Alternative)
         if: steps.mode.outputs.resolved_mode == 'native'
         id: issue-check-native
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         with:
           script: |
             let issue = context.payload.issue;
@@ -140,7 +140,7 @@ jobs:
       - name: Check issue size and type (Original Mode)
         if: steps.mode.outputs.resolved_mode == 'original'
         id: issue-check-original
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         with:
           script: |
             const issue = context.payload.issue;

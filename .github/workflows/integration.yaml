@@ -130,7 +130,7 @@ jobs:
         df -khl
 
     - name: Checkout
-      uses: actions/checkout@v4
+      uses: actions/checkout@v7
       with:
         fetch-depth: 1
 
@@ -155,7 +155,7 @@ jobs:
       uses: ./.github/actions/setup-go
 
     - name: "Download k3s binary"
-      uses: actions/download-artifact@v4
+      uses: actions/download-artifact@v8
       with:
         name: k3s-amd64
         path: ./dist/artifacts
@@ -178,7 +178,7 @@ jobs:
         fi
 
     - name: On Failure, Upload Logs
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       if: ${{ failure() }}
       with:
         name: integration-${{ matrix.itest }}-logs
@@ -194,7 +194,7 @@ jobs:
       if: env.CODECOV_TOKEN != ''
       env:
         CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
-      uses: codecov/codecov-action@v5
+      uses: codecov/codecov-action@v7
       continue-on-error: true
       with:
         token: ${{ secrets.CODECOV_TOKEN }}
@@ -204,7 +204,7 @@ jobs:
 
     - name: Archive Coverage Results (Native Alternative)
       if: always()
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
         name: integration-${{ matrix.itest }}-coverage
         path: ./${{ matrix.itest }}.out
@@ -221,14 +221,14 @@ jobs:
       GOCOVERDIR: "D:/tmp/k3scov"
     steps:
     - name: Checkout
-      uses: actions/checkout@v4
+      uses: actions/checkout@v7
       with: {fetch-depth: 1}
 
     - name: Install Go
       uses: ./.github/actions/setup-go
 
     - name: Download k3s binary
-      uses: actions/download-artifact@v4
+      uses: actions/download-artifact@v8
       with:
         name: k3s-windows
         path: dist/artifacts/
@@ -269,7 +269,7 @@ jobs:
       if: env.CODECOV_TOKEN != ''
       env:
         CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
-      uses: codecov/codecov-action@v5
+      uses: codecov/codecov-action@v7
       continue-on-error: true
       with:
         token: ${{ secrets.CODECOV_TOKEN }}
@@ -279,7 +279,7 @@ jobs:
 
     - name: Archive Coverage Results (Native Alternative)
       if: always()
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
         name: integration-windows-coverage
         path: ./windows.out

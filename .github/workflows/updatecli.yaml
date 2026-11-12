@@ -110,13 +110,13 @@ jobs:
           echo "- Target Branch: \`${{ matrix.branch }}\`" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Install Go
         uses: ./.github/actions/setup-go
 
       - name: Install Updatecli
-        uses: updatecli/updatecli-action@41b9c8d707830a9daebaeaa84c1b62d60b779564 # v3.6.0
+        uses: updatecli/updatecli-action@93ae2608256484ef8598e902aa675bbc9e278e4e # v3.10.0
 
       - name: Run Updatecli Pipeline
         shell: bash
