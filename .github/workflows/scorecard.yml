@@ -35,7 +35,7 @@ jobs:
     name: Scorecard analysis
     runs-on: ${{ inputs.runner || vars.RUNNER_LABEL || 'ubuntu-24.04' }}
     # Guard push trigger on forks to conserve runner minutes
-    if: github.repository_owner == 'k3s-io' || github.event_name != 'push'
+    if: github.repository == 'k3s-io/k3s' || github.event_name != 'push'
     permissions:
       contents: read
       security-events: write
@@ -50,7 +50,7 @@ jobs:
           REQUESTED_MODE="${{ inputs.mode || 'auto' }}"
           echo "Requested mode: $REQUESTED_MODE"
           if [ "$REQUESTED_MODE" = "auto" ]; then
-            if [ "${{ github.repository_owner }}" = "k3s-io" ]; then
+            if [ "${{ github.repository }}" = "k3s-io/k3s" ]; then
               RESOLVED_MODE="original"
             else
               RESOLVED_MODE="native"

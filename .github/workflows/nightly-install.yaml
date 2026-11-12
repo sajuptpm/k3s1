@@ -190,7 +190,7 @@ jobs:
 
   conf-test:
     name: Conformance (${{ matrix.db }}-${{ matrix.suite }})
-    runs-on: ${{ inputs.runner || vars.RUNNER_LABEL || (github.repository_owner == 'k3s-io' && matrix.suite == 'parallel' && 'cncf-ubuntu-8-32-x86' || 'ubuntu-24.04') }}
+    runs-on: ${{ inputs.runner || vars.RUNNER_LABEL || (github.repository == 'k3s-io/k3s' && matrix.suite == 'parallel' && 'cncf-ubuntu-8-32-x86' || 'ubuntu-24.04') }}
     needs: build
     if: inputs.run_conformance == true
     timeout-minutes: 60

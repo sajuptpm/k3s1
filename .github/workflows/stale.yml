@@ -54,7 +54,7 @@ jobs:
           REQUESTED_MODE="${{ inputs.mode || 'auto' }}"
           echo "Requested mode: $REQUESTED_MODE"
           if [ "$REQUESTED_MODE" = "auto" ]; then
-            if [ "${{ github.repository_owner }}" = "k3s-io" ] && [ "${{ github.event_name }}" = "schedule" ]; then
+            if [ "${{ github.repository }}" = "k3s-io/k3s" ] && [ "${{ github.event_name }}" = "schedule" ]; then
               RESOLVED_MODE="original"
             else
               RESOLVED_MODE="native"

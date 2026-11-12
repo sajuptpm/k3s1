@@ -50,7 +50,7 @@ jobs:
           REQUESTED_MODE="${{ inputs.mode || 'auto' }}"
           echo "Requested mode: $REQUESTED_MODE"
           if [ "$REQUESTED_MODE" = "auto" ]; then
-            if [ "${{ github.repository_owner }}" = "k3s-io" ]; then
+            if [ "${{ github.repository }}" = "k3s-io/k3s" ]; then
               RESOLVED_MODE="original"
             else
               RESOLVED_MODE="native"
@@ -72,7 +72,7 @@ jobs:
             const actor = context.actor;
             const { repo, owner } = context.repo;
 
-            if (resolvedMode === 'original' && owner === 'k3s-io') {
+            if (resolvedMode === 'original' && `${owner}/${context.repo.repo}` === 'k3s-io/k3s') {
               try {
                 await github.rest.orgs.checkMembershipForUser({
                   org: 'k3s-io',

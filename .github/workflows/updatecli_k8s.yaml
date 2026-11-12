@@ -59,7 +59,7 @@ jobs:
           REQUESTED_MODE="${{ inputs.mode || 'auto' }}"
           echo "Requested mode: $REQUESTED_MODE"
           if [ "$REQUESTED_MODE" = "auto" ]; then
-            if [ "${{ github.repository_owner }}" = "k3s-io" ]; then
+            if [ "${{ github.repository }}" = "k3s-io/k3s" ]; then
               RESOLVED_MODE="original"
             else
               RESOLVED_MODE="native"
@@ -97,7 +97,7 @@ jobs:
           UPDATECLI_GITHUB_ACTOR: ${{ github.actor }}
           UPDATECLI_GITHUB_TOKEN: ${{ secrets.UPDATECLI_BOT_TOKEN || secrets.GITHUB_TOKEN }}
           TARGET_BRANCH: ${{ matrix.branch }}
-          TARGET_REPO: ${{ github.event.repository.name || 'k3s' }}
+          TARGET_REPO: ${{ github.event.repository.name || 'k3s1' }}
           TARGET_ORG: ${{ github.repository_owner }}
           COMMAND: ${{ steps.mode.outputs.command }}
         run: |

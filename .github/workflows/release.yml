@@ -92,7 +92,7 @@ jobs:
           REQUESTED_MODE="${{ inputs.mode || 'auto' }}"
           echo "Requested mode: $REQUESTED_MODE"
           if [ "$REQUESTED_MODE" = "auto" ]; then
-            if [ "${{ github.repository_owner }}" = "k3s-io" ]; then
+            if [ "${{ github.repository }}" = "k3s-io/k3s" ]; then
               RESOLVED_MODE="original"
             else
               RESOLVED_MODE="native"
@@ -140,7 +140,7 @@ jobs:
 
       - name: Read registry secrets (staging)
         uses: rancher-eio/read-vault-secrets@0da85151ad1f19ed7986c41587e45aac1ace74b6 # v3
-        if: steps.mode.outputs.resolved_mode == 'original' && github.repository_owner == 'k3s-io'
+        if: steps.mode.outputs.resolved_mode == 'original' && github.repository == 'k3s-io/k3s'
         with:
           secrets: |
             secret/data/github/repo/${{ github.repository }}/k3s-suse-registry-stg/credentials registry | STAGING_REGISTRY ;
@@ -149,7 +149,7 @@ jobs:
 
       - name: Read registry secrets (prime)
         uses: rancher-eio/read-vault-secrets@0da85151ad1f19ed7986c41587e45aac1ace74b6 # v3
-        if: steps.mode.outputs.resolved_mode == 'original' && !contains(env.RESOLVED_TAG, '-rc') && github.repository_owner == 'k3s-io'
+        if: steps.mode.outputs.resolved_mode == 'original' && !contains(env.RESOLVED_TAG, '-rc') && github.repository == 'k3s-io/k3s'
         with:
           secrets: |
             secret/data/github/repo/${{ github.repository }}/k3s-suse-registry/credentials registry | REGISTRY ;
@@ -157,7 +157,7 @@ jobs:
             secret/data/github/repo/${{ github.repository }}/k3s-suse-registry/credentials password | REGISTRY_PASSWORD
 
       - name: "Read Vault secrets"
-        if: steps.mode.outputs.resolved_mode == 'original' && github.repository_owner == 'k3s-io'
+        if: steps.mode.outputs.resolved_mode == 'original' && github.repository == 'k3s-io/k3s'
         uses: rancher-eio/read-vault-secrets@0da85151ad1f19ed7986c41587e45aac1ace74b6 # v3
         with:
           secrets: |
@@ -165,7 +165,7 @@ jobs:
             secret/data/github/repo/${{ github.repository }}/dockerhub/rancher/credentials password | DOCKER_TOKEN ;
 
       - name: Login to DockerHub with Rancher Secrets
-        if: steps.mode.outputs.resolved_mode == 'original' && github.repository_owner == 'k3s-io' && env.DOCKER_USERNAME != ''
+        if: steps.mode.outputs.resolved_mode == 'original' && github.repository == 'k3s-io/k3s' && env.DOCKER_USERNAME != ''
         uses: docker/login-action@v3
         with:
           username: ${{ env.DOCKER_USERNAME }}
@@ -182,7 +182,7 @@ jobs:
           password: ${{ secrets.DOCKER_TOKEN }}
 
       - name: Login to Staging Registry
-        if: steps.mode.outputs.resolved_mode == 'original' && github.repository_owner == 'k3s-io' && env.STAGING_REGISTRY != ''
+        if: steps.mode.outputs.resolved_mode == 'original' && github.repository == 'k3s-io/k3s' && env.STAGING_REGISTRY != ''
         uses: docker/login-action@v3
         with:
           registry: ${{ env.STAGING_REGISTRY }}
@@ -190,7 +190,7 @@ jobs:
           password: ${{ env.STAGING_REGISTRY_PASSWORD }}
 
       - name: Login to Prime Registry
-        if: steps.mode.outputs.resolved_mode == 'original' && !contains(env.RESOLVED_TAG, '-rc') && github.repository_owner == 'k3s-io' && env.REGISTRY != ''
+        if: steps.mode.outputs.resolved_mode == 'original' && !contains(env.RESOLVED_TAG, '-rc') && github.repository == 'k3s-io/k3s' && env.REGISTRY != ''
         uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
@@ -225,7 +225,7 @@ jobs:
       - name: Set DockerHub Org
         shell: bash
         run: |
-          if [ "${{ github.repository_owner }}" == "k3s-io" ]; then
+          if [ "${{ github.repository }}" = "k3s-io/k3s" ]; then
             echo "DOCKERHUB_ORG=rancher" >> $GITHUB_ENV
           elif [ -n "${{ secrets.DOCKER_USERNAME }}" ]; then
             echo "DOCKERHUB_ORG=${{ secrets.DOCKER_USERNAME }}" >> $GITHUB_ENV
@@ -238,10 +238,10 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: |
-            ghcr.io/${{ github.repository_owner }}/k3s
-            ${{ secrets.DOCKER_USERNAME != '' && format('docker.io/{0}/k3s', env.DOCKERHUB_ORG) || '' }}
-            name=${{ env.REGISTRY }}/rancher/k3s,enable=${{ !contains(env.RESOLVED_TAG, '-rc') && steps.mode.outputs.resolved_mode == 'original' && github.repository_owner == 'k3s-io' && env.REGISTRY != '' }}
-            name=${{ env.STAGING_REGISTRY }}/rancher/k3s,enable=${{ steps.mode.outputs.resolved_mode == 'original' && github.repository_owner == 'k3s-io' && env.STAGING_REGISTRY != '' }}
+            ghcr.io/${{ github.repository }}
+            ${{ secrets.DOCKER_USERNAME != '' && format('docker.io/{0}/{1}', env.DOCKERHUB_ORG, github.event.repository.name || 'k3s1') || '' }}
+            name=${{ env.REGISTRY }}/rancher/k3s,enable=${{ !contains(env.RESOLVED_TAG, '-rc') && steps.mode.outputs.resolved_mode == 'original' && github.repository == 'k3s-io/k3s' && env.REGISTRY != '' }}
+            name=${{ env.STAGING_REGISTRY }}/rancher/k3s,enable=${{ steps.mode.outputs.resolved_mode == 'original' && github.repository == 'k3s-io/k3s' && env.STAGING_REGISTRY != '' }}
           flavor: latest=false
           tags: ${{ steps.tag_config.outputs.tag_spec }}
 
@@ -300,7 +300,7 @@ jobs:
         run: |
           REQUESTED_MODE="${{ inputs.mode || 'auto' }}"
           if [ "$REQUESTED_MODE" = "auto" ]; then
-            if [ "${{ github.repository_owner }}" = "k3s-io" ]; then
+            if [ "${{ github.repository }}" = "k3s-io/k3s" ]; then
               RESOLVED_MODE="original"
             else
               RESOLVED_MODE="native"
@@ -319,7 +319,7 @@ jobs:
 
       - name: Read Prime artifacts secrets
         uses: rancher-eio/read-vault-secrets@0da85151ad1f19ed7986c41587e45aac1ace74b6 # v3
-        if: steps.mode.outputs.resolved_mode == 'original' && github.repository_owner == 'k3s-io'
+        if: steps.mode.outputs.resolved_mode == 'original' && github.repository == 'k3s-io/k3s'
         with:
           secrets: |
             secret/data/github/repo/${{ github.repository }}/prime-artifacts-uploader/credentials accessKeyId | AWS_ACCESS_KEY_ID ;
@@ -328,21 +328,21 @@ jobs:
 
       - name: Read registry secrets (staging)
         uses: rancher-eio/read-vault-secrets@0da85151ad1f19ed7986c41587e45aac1ace74b6 # v3
-        if: steps.mode.outputs.resolved_mode == 'original' && contains(env.RESOLVED_TAG, '-rc') && github.repository_owner == 'k3s-io'
+        if: steps.mode.outputs.resolved_mode == 'original' && contains(env.RESOLVED_TAG, '-rc') && github.repository == 'k3s-io/k3s'
         with:
           secrets: |
             secret/data/github/repo/${{ github.repository }}/k3s-suse-registry-stg/credentials registry | REGISTRY
 
       - name: Read registry secrets (prime)
         uses: rancher-eio/read-vault-secrets@0da85151ad1f19ed7986c41587e45aac1ace74b6 # v3
-        if: steps.mode.outputs.resolved_mode == 'original' && !contains(env.RESOLVED_TAG, '-rc') && github.repository_owner == 'k3s-io'
+        if: steps.mode.outputs.resolved_mode == 'original' && !contains(env.RESOLVED_TAG, '-rc') && github.repository == 'k3s-io/k3s'
         with:
           secrets: |
             secret/data/github/repo/${{ github.repository }}/k3s-suse-registry/credentials registry | REGISTRY
 
       - name: Configure AWS Credentials (s3)
         uses: aws-actions/configure-aws-credentials@v4
-        if: steps.mode.outputs.resolved_mode == 'original' && github.repository_owner == 'k3s-io' && env.AWS_ACCESS_KEY_ID != ''
+        if: steps.mode.outputs.resolved_mode == 'original' && github.repository == 'k3s-io/k3s' && env.AWS_ACCESS_KEY_ID != ''
         with:
           aws-access-key-id: ${{ env.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ env.AWS_SECRET_ACCESS_KEY }}
@@ -412,13 +412,13 @@ jobs:
           retention-days: 7
 
       - name: Update Image Registry for Prime/Staging
-        if: steps.mode.outputs.resolved_mode == 'original' && github.repository_owner == 'k3s-io' && env.REGISTRY != ''
+        if: steps.mode.outputs.resolved_mode == 'original' && github.repository == 'k3s-io/k3s' && env.REGISTRY != ''
         env:
           REGISTRY: ${{ env.REGISTRY }}
         run: sed -i "s|docker.io|${REGISTRY}|g" dist/artifacts/k3s-images.txt
 
       - name: Upload Assets to S3
-        if: steps.mode.outputs.resolved_mode == 'original' && github.repository_owner == 'k3s-io' && env.PRIME_ARTIFACTS_BUCKET_NAME != ''
+        if: steps.mode.outputs.resolved_mode == 'original' && github.repository == 'k3s-io/k3s' && env.PRIME_ARTIFACTS_BUCKET_NAME != ''
         env:
           BUCKET: ${{ env.PRIME_ARTIFACTS_BUCKET_NAME }}
         run: |
