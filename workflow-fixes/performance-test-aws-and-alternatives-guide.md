@@ -650,3 +650,82 @@ Searching the entire cloned repository reveals only two resource/benchmark-relat
 ### 9.4 Strategy Recommendation for Company X
 * Use **`rancher/distros-test-framework`** for **Reliability, Failover, Upgrade, Airgap & Functional Acceptance QA** on Company X's forked K3s releases.
 * Keep and adapt **`k3s/tests/perf/tests/{load,density}` (`clusterloader2`)** (executed against Proxmox/existing K3s clusters or refreshed Terraform as detailed in **Sections 5–7**) whenever you require **API latency, throughput, and high-density pod scaling benchmarks**.
+
+---
+
+## 10. What K3s Uses Today Instead of `tests/perf/` (`tests/docker/scale/`) & Enterprise Setup
+
+Upstream `k3s-io/k3s` replaced the legacy `tests/perf/` AWS Terraform pipeline with a **two-part modern strategy**, documented in ADR [`docs/adrs/testing-2024.md#L29,L56`](file:///c:/projects/k3s_new/k3s/docs/adrs/testing-2024.md#L29):
+
+1. **Automated CI Scale Testing -> [`tests/docker/scale/scale_test.go`](file:///c:/projects/k3s_new/k3s/tests/docker/scale/scale_test.go)** *(Introduced May 29, 2026 in commit `9269a8f5c3`, updated Oct 14, 2026 in `d61b62b407`)*:
+   Instead of spinning up AWS EC2 nodes with Terraform + `clusterloader2`, upstream K3s now runs a **Go + Ginkgo v2 Docker-in-Docker scale suite** inside the upstream `docker-large` job on a **CNCF-sponsored 32-vCPU / 128 GB RAM runner (`cncf-ubuntu-32-128-x86`)**:
+   * **Cluster Scale:** Provisions **5 server nodes + 50 agent nodes = 55 containerized K3s nodes** (`serverCount = 5`, `agentCount = 50`).
+   * **Workload Scale:** Deploys **10 namespaces × 10 deployments/ns × 15 replicas = 1,500 pods** (`maxExpectedPods = 5000`), verifying pod readiness, node health, and recording `mpstat` (CPU) and `free -mh` (RAM) before/after scale waves.
+   * *(Note: `docker-large` was omitted when your fork's [`.github/workflows/e2e.yaml`](file:///c:/projects/k3s_new/k3s/.github/workflows/e2e.yaml) was adapted for standard public runners, because `cncf-ubuntu-32-128-x86` is reserved for CNCF org repos. However, [`tests/docker/scale/scale_test.go`](file:///c:/projects/k3s_new/k3s/tests/docker/scale/scale_test.go) is already present in this repository.)*
+2. **External Multi-Node QA Acceptance & Reliability -> [`rancher/distros-test-framework`](file:///C:/projects/distros-test-framework)**:
+   Used by SUSE/Rancher QA for real multi-node EC2 OS parity, upgrades, reboots, and S3 disaster recovery (**Section 9**).
+
+### 10.1 Setup A (Recommended): Full 55-Node / 1,500–5,000 Pod Scale Test on Your Proxmox Server ($0 Cloud Spend)
+
+Use a dedicated VM on your planned 96-thread / 384 GB Proxmox server as a **Self-Hosted GitHub Actions Runner** mirroring upstream's `cncf-ubuntu-32-128-x86` environment:
+
+1. **Provision VM on Proxmox:** Ubuntu 24.04 LTS, **32 vCPU**, **64–128 GB RAM**, **100 GB NVMe storage**.
+2. **Install Prerequisites & Tune Linux Kernel Limits:**
+   `scale_test.go` calls `mpstat` ([`scale_test.go#L55,L118`](file:///c:/projects/k3s_new/k3s/tests/docker/scale/scale_test.go#L55)) and spawns 55 systemd/containerd instances, requiring `sysstat` and higher `inotify` limits:
+   ```bash
+   sudo apt-get update && sudo apt-get install -y docker.io sysstat golang-go curl
+   sudo usermod -aG docker $USER
+
+   cat << 'EOF' | sudo tee /etc/sysctl.d/99-k3s-scale.conf
+   fs.inotify.max_user_instances = 8192
+   fs.inotify.max_user_watches = 524288
+   fs.file-max = 2097152
+   EOF
+   sudo sysctl --system
+   ```
+3. **Register GitHub Self-Hosted Runner:** In GitHub repo **Settings -> Actions -> Runners -> New self-hosted runner**, register the VM with custom label `self-hosted-large`.
+4. **Restore `docker-large` Job in `.github/workflows/e2e.yaml`:**
+   ```yaml
+     docker-large:
+       needs: build
+       name: Docker Scale (55 Nodes / 1500 Pods)
+       if: github.event_name == 'workflow_dispatch'
+       timeout-minutes: 45
+       runs-on: self-hosted-large
+       steps:
+         - name: Checkout
+           uses: actions/checkout@v4
+
+         - name: Install Go
+           uses: ./.github/actions/setup-go
+
+         - name: Download K3s image
+           uses: actions/download-artifact@v4
+           with:
+             name: k3s-amd64
+             path: ./dist/artifacts
+
+         - name: Load K3s image & Run Scale Test
+           run: |
+             docker image load -i ./dist/artifacts/k3s-image.tar
+             IMAGE_TAG=$(docker image ls --format '{{.Repository}}:{{.Tag}}' | grep 'k3s' | head -n1)
+             go test -timeout=40m -v ./tests/docker/scale/... -args -ginkgo.v -ci -k3sImage="$IMAGE_TAG"
+   ```
+
+### 10.2 Setup B: Lightweight Scale Smoke Test on Free GitHub Runners (`ubuntu-24.04` — $0 Hardware)
+
+For rapid CI regression checks inside standard 4-vCPU / 16 GB free GitHub-hosted runners, override the default node/pod flags ([`scale_test.go#L20-L24`](file:///c:/projects/k3s_new/k3s/tests/docker/scale/scale_test.go#L20)) to run **6 nodes / 100 pods**:
+```bash
+sudo apt-get update && sudo apt-get install -y sysstat
+sudo sysctl -w fs.inotify.max_user_instances=8192 fs.inotify.max_user_watches=524288
+
+go test -timeout=20m -v ./tests/docker/scale/... -args \
+  -ginkgo.v -ci \
+  -k3sImage="ghcr.io/companyx/k3s:<tag>" \
+  -serverCount=1 \
+  -agentCount=5 \
+  -namespaceCount=2 \
+  -deploymentsPerNamespace=5 \
+  -replicasPerDeployment=10
+```
+*(Alternatively, organizations on GitHub Team/Enterprise without on-prem hardware can attach GitHub **32-vCPU Larger Runners**, billed per minute, using the exact YAML from Setup A.)*
