@@ -1,6 +1,39 @@
 # K3s Performance Testing (`tests/perf`) — AWS Terraform Guide & Alternative Environments
 
-This guide documents the complete architecture, AWS setup, execution lifecycle, monitoring, cleanup, and alternative deployment targets (Proxmox/Bare-Metal, GitHub Actions Runners, and Existing K3s Clusters) for the Terraform + `clusterloader2` performance test suite located in [`tests/perf/`](file:///c:/projects/k3s_new/k3s/tests/perf/README.md).
+This guide documents the upstream maintenance status, complete architecture, AWS setup, execution lifecycle, monitoring, cleanup, and alternative deployment targets (Proxmox/Bare-Metal, GitHub Actions Runners, and Existing K3s Clusters) for the Terraform + `clusterloader2` performance test suite located in [`tests/perf/`](file:///c:/projects/k3s_new/k3s/tests/perf/README.md).
+
+---
+
+## 0. Upstream Status: Is K3s Actively Using This Terraform Script & AWS Infra?
+
+**No — `tests/perf/` is legacy, unmaintained, and dormant in upstream `k3s-io/k3s`.** It is **not** executed by any upstream CI/CD pipeline, and upstream maintainers have not actively used or updated its Terraform provisioning logic since **2019–2020**.
+
+### Evidence Verified Directly From Repository & Git History
+
+1. **Zero CI/CD Pipeline Integration:**
+   * Searching all `.github/workflows/` and `scripts/` confirms **0 GitHub Actions workflows** and **0 automated scripts** invoke `tests/perf`, `scripts/perf`, `scripts/test`, or `clusterloader`.
+2. **Git Commit History (`git log -- tests/perf`):**
+   * **Created Oct–Nov 2019** (`128eff9b0e`, `2165464af6`, `9969dc9cff`, `93e28126aa`) by contributor `galal-hussein` for K3s `v0.9.1` / `v1.0.0`.
+   * **Zero functional Terraform or benchmark updates from 2020 to 2026.** All 6 subsequent commits touching `tests/perf/` were repository-wide mechanical find-and-replace / linter sweeps:
+     | Commit | Date | Author | Scope (Mechanical Repo Sweep Only) |
+     |---|---|---|---|
+     | `5fa0083750` & `4286ba7163` | 2020-03-04 | Joakim Roubert | Shell `$()` backtick & `markdownlint` style cleanup. |
+     | `b4d81a9e33` | 2020-08-24 | Brad Davidson | Repo-wide removal of lingering `dqlite` references. |
+     | `86be784aa0` | 2022-10-27 | James Blair | Repo-wide migration from deprecated `k8s.gcr.io` to `registry.k8s.io`. |
+     | `13c633da12` | 2022-11-04 | Derek Nola | Repo-wide flag cleanup (`--no-deploy` -> `--disable`). |
+     | `ade82387f7` | 2025-09-24 | Ben | Repo-wide inclusive naming proposal (`master` -> `primary`, Issue `#12110`). |
+3. **Accumulated Code Bitrot & Broken Defaults:**
+   Because nobody in upstream K3s runs `tests/perf/` against AWS anymore, multiple breaking issues remain unfixed in the tree:
+   * Unpatched syntax typo (`$var.domain_name}` missing `{`) in [`server/main.tf#L234`](file:///c:/projects/k3s_new/k3s/tests/perf/server/main.tf#L234) and missing SSH `StrictHostKeyChecking=no`.
+   * Deprecated Terraform AWS data source (`data "aws_subnet_ids"` removed in AWS Provider v5+) in [`server/data.tf#L5`](file:///c:/projects/k3s_new/k3s/tests/perf/server/data.tf#L5) and [`agents/data.tf#L13`](file:///c:/projects/k3s_new/k3s/tests/perf/agents/data.tf#L13).
+   * Deprecated `terraform destroy --force` flag (removed in Terraform 0.15+) in [`scripts/perf#L5,L119`](file:///c:/projects/k3s_new/k3s/tests/perf/scripts/perf#L119).
+   * EOL software targets: Ubuntu 18.04 (`ubuntu-bionic-18.04-*`), Docker `19.03.sh` ([`etcd.tmpl#L31`](file:///c:/projects/k3s_new/k3s/tests/perf/server/files/etcd.tmpl#L31)), `K3S_VERSION="v1.0.0"` ([`scripts/config#L7`](file:///c:/projects/k3s_new/k3s/tests/perf/scripts/config#L7)), and MySQL `5.7`.
+   * Personal Docker Hub image reference (`husseingalal/clusterloader:dev` in [`scripts/test#L12,L32`](file:///c:/projects/k3s_new/k3s/tests/perf/scripts/test#L12)) instead of an official `rancher/` or `registry.k8s.io` container image.
+   * Hardcoded personal/internal AWS profile (`profile = "rancher-eng"`).
+4. **What Upstream SUSE/Rancher Uses Today Instead:**
+   * As noted in [`tests/TESTING.md#L147-L151`](file:///c:/projects/k3s_new/k3s/tests/TESTING.md#L147-L151), Rancher/SUSE QA teams migrated active multi-node provisioning, acceptance, and scale/upgrade validation to the external **[`rancher/distros-test-framework`](https://github.com/rancher/distros-test-framework)** alongside internal Rancher QA automation.
+
+> **Practical Takeaway:** While `tests/perf/` is dormant upstream (and requires the fixes in **Section 3** if you want to run its Terraform AWS scripts), the underlying **`clusterloader2`** workload YAMLs ([`load/config.yaml`](file:///c:/projects/k3s_new/k3s/tests/perf/tests/load/config.yaml) and [`density/config.yaml`](file:///c:/projects/k3s_new/k3s/tests/perf/tests/density/config.yaml)) remain valid Kubernetes scale benchmarks that you can run against any modern K3s cluster (**Sections 5–7**).
 
 ---
 
