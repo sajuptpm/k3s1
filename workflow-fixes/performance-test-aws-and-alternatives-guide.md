@@ -550,3 +550,60 @@ docker run --rm \
 > ```bash
 > kubectl --kubeconfig kubeconfig.yaml get ns | grep test-
 > ```
+
+---
+
+## 8. `clusterloader` Workflow Usage & Running Upstream `rancher/distros-test-framework`
+
+### 8.1 Which Workflows in This Repo Use `clusterloader`?
+**None — 0 workflows in `.github/workflows/` use `clusterloader`.**
+
+Verified via repository-wide search (`git grep -n -i "clusterloader\|distros-test-framework"`):
+* **0 GitHub Actions workflows** (`.github/workflows/`) and **0 build scripts** (`scripts/`) invoke `clusterloader`, `tests/perf/`, `scripts/perf`, or `scripts/test`.
+* The **only** executable references in the repository are [`tests/perf/scripts/test`](file:///c:/projects/k3s_new/k3s/tests/perf/scripts/test#L12-L33) and [`tests/perf/Makefile`](file:///c:/projects/k3s_new/k3s/tests/perf/Makefile#L23-L24), which are manually triggered from a workstation.
+
+---
+
+### 8.2 Running Rancher's External `rancher/distros-test-framework`
+
+As noted in [`tests/TESTING.md#L147-L151`](file:///c:/projects/k3s_new/k3s/tests/TESTING.md#L147-L151), active Rancher QA multi-node acceptance and upgrade testing lives in the **separate external repository** [`rancher/distros-test-framework`](https://github.com/rancher/distros-test-framework)—it is **not** inside this `k3s` repository and is **not** triggered automatically by `k3s` GitHub Actions workflows.
+
+It combines **Go**, **Ginkgo/Gomega** (BDD assertions), and **Terraform/OpenTofu** (cloud or VM provisioning) across AWS/cloud providers and local/Docker execution targets.
+
+#### Manual Execution Steps (Workstation / QA Jumpbox)
+1. **Prerequisites:** Install **Go** (matching the framework's `go.mod`), **Terraform** or **OpenTofu**, the **Ginkgo CLI** (`go install github.com/onsi/ginkgo/v2/ginkgo`), and cloud CLI credentials (or Docker for local runs).
+2. **Clone & Configure:**
+   ```bash
+   git clone https://github.com/rancher/distros-test-framework.git
+   cd distros-test-framework
+   ```
+   Copy/edit the sample configuration templates under `docs/examples/` and `config/` (`.env`, `.tfvars`, or provider YAML such as `aws.yaml`) to specify distro (`k3s`), server/agent node counts, OS AMIs, and the target K3s version. Consult the checked-out branch's `README.md` and `Makefile` for exact variable names.
+3. **Execute Entrypoint Suites via `go test` or `ginkgo`:**
+   ```bash
+   # Run a specific validation entrypoint suite
+   go test -v ./entrypoint/validatecluster/... -ginkgo.v -ginkgo.focus="cluster validation"
+
+   # Or run via Ginkgo CLI
+   ginkgo -v ./entrypoint/<suite-dir>
+   ```
+   Terraform provisions the nodes, Ginkgo runs CNI/storage/workload/upgrade checks, and post-test teardown hooks destroy the infrastructure.
+
+---
+
+### 8.3 How to Trigger `distros-test-framework` in Your Fork & Enterprise
+
+Because `distros-test-framework` is external to your K3s fork, connect them using the following pattern:
+
+1. **Fork & Point to Company X K3s Artifacts:**
+   * Fork `rancher/distros-test-framework` into your company GitHub organization (`github.com/companyx/distros-test-framework`).
+   * Point its K3s install configuration to **Company X's forked binaries/images** (hosted in GitHub Releases, `ghcr.io`, or internal Harbor) instead of upstream `get.k3s.io` defaults.
+
+2. **Integrate Triggering into Your K3s Fork CI/CD:**
+   * **Option A — Cross-Repo Trigger from Release / Nightly Workflow:**
+     Add a step at the end of your K3s fork's release or nightly workflow (`release.yml`) calling `gh workflow run` (or `repository_dispatch`) against `companyx/distros-test-framework`, passing your newly built K3s tag/version as a dispatch input.
+   * **Option B — Multi-Repo Checkout Workflow:**
+     Create a scheduled/manual GitHub Actions workflow in your K3s fork (e.g., `.github/workflows/acceptance-qa.yml`) that checks out `companyx/distros-test-framework`, renders `.env` / `config.yaml` from org secrets & variables, runs `go test -v ./entrypoint/... -ginkgo.v`, uploads diagnostic logs (`journalctl`, cluster status) as artifacts, and ensures `terraform destroy` executes in an `if: always()` cleanup step.
+
+3. **Choose the Execution Infrastructure for Your Enterprise:**
+   * **AWS Cloud Parity (via GitHub Actions + OIDC):** Ideal for testing full OS matrices (Ubuntu, RHEL, Rocky, Windows) without storing static long-lived AWS keys in GitHub Secrets.
+   * **Zero-Cloud-Spend Internal QA (Self-Hosted Runner on Proxmox VE):** Run `distros-test-framework`'s local/Docker mode on a self-hosted GitHub Actions Runner attached to your on-premises Proxmox server, or adapt its Terraform modules to a Proxmox/vSphere provider for internal VM acceptance runs.
