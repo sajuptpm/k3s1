@@ -60,5 +60,31 @@ Only purchase **SUSE Private Registry** if:
 
 ---
 
-## 4. Related References
+## 4. Do We Need Both a Private Container Registry and a Docker Hub Organization Registry?
+
+**No — you do not need both.** In most enterprise fork setups, you can skip the paid **Docker Hub Organization Registry** completely.
+
+### 4.1 Why Upstream K3s Uses Both (and Why Company X Doesn't Have To)
+In [`.github/workflows/release.yml#L240-L245`](file:///c:/projects/k3s_new/k3s/.github/workflows/release.yml#L240-L245), upstream SUSE/Rancher pushes to **four** registries (`ghcr.io`, `docker.io`, `stgregistry.suse.com`, and `registry.rancher.com`) purely because of SUSE's **two-tier commercial business model**:
+* **Docker Hub (`docker.io/rancher/k3s`)**: Historical default registry for public open-source K3s community users.
+* **SUSE Private Registries (`registry.rancher.com` / `stgregistry.suse.com`)**: Paywalled/authenticated registries exclusively for paid **Rancher Prime** enterprise subscribers and internal `-rc` staging.
+
+Because **GitHub Container Registry (`ghcr.io`)** already provides free, OCI-compliant public container hosting integrated with GitHub Actions, paying for a Docker Hub Organization ($180+/yr) is redundant unless customers explicitly require `docker.io` URLs.
+
+### 4.2 Decision Matrix: Which Registry Setup Do You Actually Need?
+
+| Your Enterprise Release Model | Need Private Registry (Harbor)? | Need Paid Docker Hub Org ($180+/yr)? | Recommended Setup & Cost |
+|---|---|---|---|
+| **1. Public Open-Source Fork Release Only** *(GitHub-native fork mode)* | **No** | **No** *(optional)* | Use **`ghcr.io/<companyx>/k3s`** only via built-in `GITHUB_TOKEN`.<br>**Cost: $0/yr** |
+| **2. Public Open-Source Release + Internal Dev/Test/Air-Gap Lab** *(with Proxmox server)* | **Yes** *(Self-hosted Harbor OSS)* | **No** | • **`ghcr.io`** for public customer releases.<br>• **Self-hosted Upstream Harbor (Apache-2.0)** on your Proxmox server as a **pull-through proxy cache** (avoids Docker Hub rate limits on dev VMs) and internal pre-release / air-gap staging.<br>**Cost: $0/yr license** |
+| **3. Commercial / Authenticated Customer Builds** *(selling private builds behind login, like Rancher Prime)* | **Yes** *(Harbor OSS or SUSE Private Registry)* | **No** *(unless you also want a public `docker.io` community presence)* | • **Harbor** (with customer robot accounts, Trivy gates, and replication) to distribute commercial builds.<br>• **`ghcr.io`** for open-source editions. |
+| **4. Legacy Tooling / Marketing Requires `docker.io/<companyx>/k3s`** | **Optional** | **Yes** *(Docker Team $180+/yr)* | Only pay for **Docker Hub Organization/Team** if customers explicitly expect `docker.io` image URLs or you need high unauthenticated Docker Hub pull quotas. |
+
+### 4.3 Bottom Line Recommendation
+* **Drop Docker Hub Organization ($180+/yr saved):** Use **`ghcr.io`** as your **single public open-source container registry**. It natively ties images to your GitHub Releases, SBOMs, and OpenVEX artifacts at **$0.00**.
+* **Deploy Self-Hosted Harbor (Apache-2.0, $0) on your Proxmox server only if you need internal/enterprise controls:** specifically for **air-gapped replication**, **pre-release staging**, **Trivy vulnerability blocking**, and **proxy-caching Docker Hub** so internal engineering VMs never hit rate limits.
+
+---
+
+## 5. Related References
 - All underlying web search summaries and source URLs are archived in [`workflow-fixes/web-search-results-archive.md`](file:///c:/projects/k3s_new/k3s/workflow-fixes/web-search-results-archive.md).
