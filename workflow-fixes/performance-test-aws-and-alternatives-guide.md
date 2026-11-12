@@ -607,3 +607,46 @@ Because `distros-test-framework` is external to your K3s fork, connect them usin
 3. **Choose the Execution Infrastructure for Your Enterprise:**
    * **AWS Cloud Parity (via GitHub Actions + OIDC):** Ideal for testing full OS matrices (Ubuntu, RHEL, Rocky, Windows) without storing static long-lived AWS keys in GitHub Secrets.
    * **Zero-Cloud-Spend Internal QA (Self-Hosted Runner on Proxmox VE):** Run `distros-test-framework`'s local/Docker mode on a self-hosted GitHub Actions Runner attached to your on-premises Proxmox server, or adapt its Terraform modules to a Proxmox/vSphere provider for internal VM acceptance runs.
+
+---
+
+## 9. Source Code Audit of `rancher/distros-test-framework`: Performance vs. Reliability Tests
+
+Direct inspection of the cloned [`rancher/distros-test-framework`](file:///C:/projects/distros-test-framework) source tree (its `Makefile`, all 18 `entrypoint/` suites, `pkg/testcase/`, `modules/k3s/`, `workloads/`, and `docs/`) confirms:
+
+1. **Cluster Performance / Scale Load Tests:** **No** — `distros-test-framework` contains **no** `clusterloader2`, `k6`, scheduling throughput, API latency (`P50/P90/P99`), or multi-node stress tests.
+2. **Reliability / Failover / Recovery Tests:** **Yes — extensive** coverage for instance reboots, systemd restarts, etcd reset/restore from S3, TLS cert rotation, secrets encryption key rotation, and rolling/SUC upgrades.
+3. **Alternate Version of `k3s/tests/perf/`:** **No** — it is **not** a replacement for [`tests/perf/`](file:///c:/projects/k3s_new/k3s/tests/perf/README.md).
+
+### 9.1 Resource & Benchmark-Adjacent Checks Found in `distros-test-framework`
+Searching the entire cloned repository reveals only two resource/benchmark-related checks, neither of which tests cluster-wide Kubernetes load or scaling:
+* **`TestNodeCPUThreshold(80, ...)`** ([`pkg/testcase/node.go#L140-L180`](file:///C:/projects/distros-test-framework/pkg/testcase/node.go#L140-L180)): Deploys `metrics-server.yaml` and runs `kubectl top node` during `validatecluster`, `restartservice`, and `rebootinstances` to assert no node exceeds **80% CPU utilization**. This acts as a passive overhead/health guard rather than a load generator.
+* **`nvidia-benchmark.yaml`** ([`workloads/amd64/nvidia-benchmark.yaml`](file:///C:/projects/distros-test-framework/workloads/amd64/nvidia-benchmark.yaml), run by [`pkg/testcase/nvidia.go#L69-L72`](file:///C:/projects/distros-test-framework/pkg/testcase/nvidia.go#L69-L72)): Launches a single CUDA GPU verification pod (`nvcr.io/nvidia/k8s/cuda-sample:nbody` with `nbody -gpu -benchmark`) strictly to validate NVIDIA GPU device plugin and driver integration—not Kubernetes control-plane performance.
+
+### 9.2 Reliability & Resilience Test Suites in `distros-test-framework`
+
+| Suite Entrypoint (`entrypoint/`) | `Makefile` Target | Reliability / Recovery Scenario Tested | Source Evidence |
+|---|---|---|---|
+| **`rebootinstances`** | `make test-reboot-instances` | Stops and restarts every server and agent EC2 instance via AWS SDK, verifying nodes, pods, and workloads recover cleanly. | [`pkg/testcase/rebootinstances.go`](file:///C:/projects/distros-test-framework/pkg/testcase/rebootinstances.go) |
+| **`restartservice`** | `make test-restart-service` | Restarts `k3s` / `k3s-agent` systemd services on all nodes; asserts CPU < 80% and survival of ClusterIP, NodePort, Ingress, DaemonSets, DNS, Local Path, and LoadBalancer services. | [`entrypoint/restartservice/restartservice_test.go`](file:///C:/projects/distros-test-framework/entrypoint/restartservice/restartservice_test.go) |
+| **`clusterreset`** | — *(`go test ./entrypoint/clusterreset/...`)* | Resets cluster datastore/state and verifies node rejoin plus re-validation of Ingress, DaemonSets, storage, and services. | [`entrypoint/clusterreset/clusterreset_test.go`](file:///C:/projects/distros-test-framework/entrypoint/clusterreset/clusterreset_test.go) |
+| **`clusterrestore`** | — *(`go test ./entrypoint/clusterrestore/...`)* | Takes and restores etcd snapshots via AWS S3 (`S3_BUCKET`) across an HA cluster + fresh node, validating pre-existing workloads survive restore. | [`entrypoint/clusterrestore/clusterrestore_test.go`](file:///C:/projects/distros-test-framework/entrypoint/clusterrestore/clusterrestore_test.go), [`docs/testing.md#L272-L298`](file:///C:/projects/distros-test-framework/docs/testing.md#L272-L298) |
+| **`upgradecluster`** | `make test-upgrade-suc`, `test-upgrade-manual`, `test-upgrade-node-replacement` | Tests manual in-place upgrades, System Upgrade Controller (SUC) upgrades, and rolling node-replacement upgrades without breaking workloads. | [`Makefile#L65-L73`](file:///C:/projects/distros-test-framework/Makefile#L65-L73) |
+| **`certrotate`** | `make test-cert-rotate` | Validates TLS certificate rotation on split-role HA topologies (`etcd-only` + `cp-only` + `agent`). | [`docs/testing.md#L3-L30`](file:///C:/projects/distros-test-framework/docs/testing.md#L3-L30) |
+| **`secretsencrypt`** | `make test-secrets-encrypt` | Validates KMS/secrets encryption key rotation (`prepare/rotate/reencrypt`, `rotate-keys`, and `secretbox`). | [`docs/testing.md#L32-L64`](file:///C:/projects/distros-test-framework/docs/testing.md#L32-L64) |
+| **`killalluninstall`** | `make test-killall-uninstall` | Tests clean teardown of K3s processes and filesystem unmounts (`k3s-killall.sh` and uninstall scripts). | [`Makefile#L122-L123`](file:///C:/projects/distros-test-framework/Makefile#L122-L123) |
+
+*(Additional functional/conformance suites present: `validatecluster`, `conformance` via Sonobuoy, `airgap`, `dualstack`, `ipv6only`, `mixedoscluster`, `selinux`, `deployrancher`, `nvidia`, and `versionbump`.)*
+
+### 9.3 Architectural Comparison: `k3s/tests/perf/` vs. `rancher/distros-test-framework`
+
+| Dimension | `k3s/tests/perf/` (In K3s Repo) | `rancher/distros-test-framework` (External Repo) |
+|---|---|---|
+| **Primary Goal** | **Scale, Load & Latency Benchmarking** (throughput, `P50/P90/P99` API responsiveness, max pod density). | **QA Acceptance, Reliability, Upgrades & Conformance** (cluster health, failover, airgap, upgrades, Sonobuoy). |
+| **Test Runner Engine** | Kubernetes **`clusterloader2`** (`load/config.yaml`, `density/config.yaml`) + Prometheus/Grafana scraping. | Go **`Ginkgo v2` / `Gomega`** assertions + `kubectl` + `sonobuoy`. |
+| **Typical Cluster Size** | Large scale (10–100+ worker nodes on `m5.2xlarge` / `m5.large`, ASGs, external RDS/etcd). | Small HA/acceptance topologies (e.g., 3 servers + 1 worker on `t3a.medium` in [`k3s.tfvars.example#L7-L43`](file:///C:/projects/distros-test-framework/docs/examples/k3s.tfvars.example#L7-L43)). |
+| **Maintenance Status** | **Dormant** (last functional Terraform updates 2019–2020). | **Actively maintained** by Rancher QA (`Makefile`, Jenkinsfiles, GitHub Workflows, Go 1.23, Helm v3.18.3). |
+
+### 9.4 Strategy Recommendation for Company X
+* Use **`rancher/distros-test-framework`** for **Reliability, Failover, Upgrade, Airgap & Functional Acceptance QA** on Company X's forked K3s releases.
+* Keep and adapt **`k3s/tests/perf/tests/{load,density}` (`clusterloader2`)** (executed against Proxmox/existing K3s clusters or refreshed Terraform as detailed in **Sections 5–7**) whenever you require **API latency, throughput, and high-density pod scaling benchmarks**.
